@@ -1,0 +1,7 @@
+# Example Docker Compose override: combine with your own n8n compose file.
+# Allows n8n's SSRF protection to reach the Get Files restricted interface on the Windows host.
+# Applying it requires recreating the n8n container; adapt the hostnames to your setup.
+services:
+  n8n:
+    environment:
+      N8N_SSRF_ALLOWED_HOSTNAMES: host.docker.internal

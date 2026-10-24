@@ -1,0 +1,20 @@
+Get Files
+Copyright 2026 Brightline IP
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party components
+- corpus/vendor/context_forge_extractors.py, extraction_errors.py, worker_runtime.py, pdf_ocr.py and
+  windows_pdf_ocr.ps1 are reviewed snapshots of the Context Forge text-extraction and bounded Windows OCR
+  adapter, also by Brightline IP and also licensed under Apache-2.0. See corpus/vendor/README.md.
+- Python packages (installed separately from requirements.lock): pypdf (BSD-3-Clause), python-docx (MIT),
+  openpyxl (MIT), python-pptx (MIT), defusedxml (PSF-2.0), cryptography (Apache-2.0 / BSD-3-Clause),
+  Pillow (HPND), lxml (BSD-3-Clause). Their own licenses apply.
+- Node packages (installed separately via integrations/mcp/package-lock.json): @modelcontextprotocol/sdk (MIT)
+  and zod (MIT), with their transitive dependencies.
+- Windows OCR uses the Windows.Media.Ocr engine and language packs supplied by Microsoft Windows; they are not
+  redistributed.
+
+Data sources
+Get Files downloads whatever URLs you give it. Documents you retrieve remain subject to the copyright, terms of
+use and robots/rate-limit policies of their publishers. This project grants no rights in any retrieved material.

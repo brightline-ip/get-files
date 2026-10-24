@@ -1,0 +1,479 @@
+{
+  "name": "Source Corpus - Intake and Search",
+  "nodes": [
+    {
+      "id": "corpus-0-hook",
+      "name": "Intake request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        0
+      ],
+      "webhookId": "source-corpus-intake-v1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__N8N_CORPUS_WEBHOOK__",
+          "name": "Source Corpus - n8n webhook only"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "source-corpus-intake",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "corpus-0-grants",
+      "name": "Intake operation grant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        0
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/grants",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Intake request').item.json; return {action:'ingest',collection:h.body.collection,parameters:({items:h.body.items})}; })() }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-0-execute",
+      "name": "Intake local service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        0
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/execute",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Intake request').item.json; return {action:'ingest',collection:h.body.collection,parameters:({items:h.body.items})}; })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($json.body?.grant || 'invalid') }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-0-respond",
+      "name": "Intake response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        140,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.body : {error:'Corpus service unavailable or invalid response'} }}",
+        "options": {
+          "responseCode": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.statusCode : 502 }}"
+        }
+      }
+    },
+    {
+      "id": "corpus-1-hook",
+      "name": "Search request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        240
+      ],
+      "webhookId": "source-corpus-search-v1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__N8N_CORPUS_WEBHOOK__",
+          "name": "Source Corpus - n8n webhook only"
+        }
+      },
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "source-corpus-search",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "corpus-1-grants",
+      "name": "Search operation grant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        240
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/grants",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Search request').item.json; return {action:'search',collection:h.query.collection,parameters:({q:h.query.q || '',limit:Number(h.query.limit || 5),tags:(h.query.tags || '').split(',').filter(Boolean),include_incomplete:h.query.include_incomplete === 'true'})}; })() }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-1-execute",
+      "name": "Search local service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        240
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/execute",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Search request').item.json; return {action:'search',collection:h.query.collection,parameters:({q:h.query.q || '',limit:Number(h.query.limit || 5),tags:(h.query.tags || '').split(',').filter(Boolean),include_incomplete:h.query.include_incomplete === 'true'})}; })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($json.body?.grant || 'invalid') }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-1-respond",
+      "name": "Search response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        140,
+        240
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.body : {error:'Corpus service unavailable or invalid response'} }}",
+        "options": {
+          "responseCode": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.statusCode : 502 }}"
+        }
+      }
+    },
+    {
+      "id": "corpus-2-hook",
+      "name": "Job request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        480
+      ],
+      "webhookId": "source-corpus-job-v1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__N8N_CORPUS_WEBHOOK__",
+          "name": "Source Corpus - n8n webhook only"
+        }
+      },
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "source-corpus-jobs/:jobId",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "corpus-2-grants",
+      "name": "Job operation grant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        480
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/grants",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Job request').item.json; return {action:'job',collection:h.query.collection,parameters:({job_id:h.params.jobId})}; })() }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-2-execute",
+      "name": "Job local service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        480
+      ],
+      "credentials": {
+        "httpSslAuth": {
+          "id": "__N8N_CORPUS_TLS__",
+          "name": "Source Corpus - restricted TLS identity"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://host.docker.internal:8767/v1/execute",
+        "provideSslCertificates": true,
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const h=$('Job request').item.json; return {action:'job',collection:h.query.collection,parameters:({job_id:h.params.jobId})}; })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($json.body?.grant || 'invalid') }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "corpus-2-respond",
+      "name": "Job response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        140,
+        480
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.body : {error:'Corpus service unavailable or invalid response'} }}",
+        "options": {
+          "responseCode": "={{ ($json.statusCode >= 200 && $json.statusCode <= 599 && $json.body && typeof $json.body === 'object') ? $json.statusCode : 502 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Intake request": {
+      "main": [
+        [
+          {
+            "node": "Intake operation grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intake operation grant": {
+      "main": [
+        [
+          {
+            "node": "Intake local service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intake local service": {
+      "main": [
+        [
+          {
+            "node": "Intake response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search request": {
+      "main": [
+        [
+          {
+            "node": "Search operation grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search operation grant": {
+      "main": [
+        [
+          {
+            "node": "Search local service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search local service": {
+      "main": [
+        [
+          {
+            "node": "Search response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job request": {
+      "main": [
+        [
+          {
+            "node": "Job operation grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job operation grant": {
+      "main": [
+        [
+          {
+            "node": "Job local service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job local service": {
+      "main": [
+        [
+          {
+            "node": "Job response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 60,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  }
+}

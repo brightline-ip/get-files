@@ -1,0 +1,35 @@
+# Runtime data and secrets
+data/
+intake/
+security/
+backups/
+backup-staging/
+test-output/
+.env
+*.env
+!.env.example
+*.scbk
+*.dpapi
+*.sqlite*
+*.db
+*.log
+*.pem
+*.key
+*.pfx
+*.crt
+*.enc
+*token*
+!corpus/token_rotation.py
+!tests/test_token_rotation.py
+*secret*
+*credential*
+
+# Environments and caches
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+coverage/
+tmp/
+.test-*/
+*.bak

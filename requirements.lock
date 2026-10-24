@@ -1,0 +1,13 @@
+defusedxml==0.7.1
+cffi==2.1.1
+cryptography==50.0.1
+et-xmlfile==2.0.0
+lxml==6.1.1
+openpyxl==3.1.5
+pillow==12.3.0
+pypdf==6.16.1
+pycparser==3.0
+python-docx==1.2.0
+python-pptx==1.0.2
+typing-extensions==4.16.0
+xlsxwriter==3.2.9
