@@ -39,7 +39,7 @@ if (-not $SkipPython) {
         else { & python -m venv $venv }
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $venvPython)) { throw 'Could not create the virtual environment. Python 3.12 is required.' }
     }
-    $version=& $venvPython -c 'import sys;print("%d.%d"%sys.version_info[:2])'
+    $version=& $venvPython -c 'import sys;print(sys.version_info[0],sys.version_info[1],sep=chr(46))'  # no double quotes: Windows PowerShell 5.1 strips them
     if ($version -ne '3.12') { Write-Warning "Python $version found; Python 3.12 is the tested version." }
     Write-Host 'Installing Python packages from requirements.lock...'
     & $venvPython -m pip install --disable-pip-version-check -r (Join-Path $root 'requirements.lock')
