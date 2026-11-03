@@ -85,6 +85,7 @@ Environment variables (see [.env.example](.env.example); nothing is read from a 
 | `GET_FILES_TOKEN_FILE` | `<data>\service-token.txt` | Bearer token file |
 | `GET_FILES_AUTOSTART` | `true` | `false` stops the client from launching the service |
 | `GET_FILES_PYTHON` | `.venv\Scripts\python.exe` | Interpreter for `start.ps1` / `corpus.ps1` |
+| `GET_FILES_ALLOW_DOCKER_HOST` | unset | `1` also accepts the `Host: host.docker.internal:<port>` header, so a client in Docker Desktop (for example the Research Verification Workbench container) can call the service. The token is still required |
 
 Command-line options: `start.ps1 -Port -DataPath -Background`; `python -m corpus --data DIR --import-root DIR serve`.
 Local-file intake only reads inside import roots (default `intake\` beside the install).

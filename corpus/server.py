@@ -49,6 +49,10 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
     if len(token)<32:
         raise ValueError("A service token of at least 32 characters is required")
     stop = stop_event or threading.Event()
+    # Opt-in (GET_FILES_ALLOW_DOCKER_HOST=1) for a client running in Docker Desktop, such as the Research
+    # Verification Workbench container, which reaches this loopback service as host.docker.internal.
+    # The bearer token is still required; Origin and Fetch Metadata checks are unchanged.
+    docker_host = os.environ.get('GET_FILES_ALLOW_DOCKER_HOST') == '1'
     processor = processor or Processor(library)
     worker_error = None
 
@@ -90,6 +94,7 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
             # Defends the loopback API against DNS rebinding and cross-site browser requests.
             port=self.server.server_port
             hosts={f"127.0.0.1:{port}",f"localhost:{port}",f"[::1]:{port}"}
+            if docker_host:hosts.add(f"host.docker.internal:{port}")
             host=self.headers.get('Host','').lower()
             if len(self.headers.get_all('Host',[]))!=1 or host not in hosts:
                 self.send_json({'error':'Untrusted Host'},403);return False

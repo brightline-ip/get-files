@@ -4,6 +4,7 @@ No production database, credentials, URLs or services are used.
 """
 import http.client
 import json
+import os
 import sqlite3
 import socket
 import subprocess
@@ -192,6 +193,32 @@ class SecurityTests(unittest.TestCase):
             stop.set();thread.join(10)
             self.assertFalse(thread.is_alive())
 
+    def test_docker_host_header_is_opt_in(self):
+        token='docker-host-fixture-only-'+'x'*32
+        def run(env):
+            stop=threading.Event();ready=threading.Event();state={}
+            def on_ready(server):state['port']=server.server_port;ready.set()
+            def request(host):
+                conn=http.client.HTTPConnection('127.0.0.1',state['port'],timeout=5)
+                try:
+                    conn.putrequest('GET','/v1/status',skip_host=True)
+                    conn.putheader('Host',host%state['port']);conn.putheader('Authorization','Bearer '+token)
+                    conn.endheaders();response=conn.getresponse();response.read();return response.status
+                finally:conn.close()
+            with patch.dict(os.environ,env,clear=False):
+                if not env:os.environ.pop('GET_FILES_ALLOW_DOCKER_HOST',None)
+                thread=threading.Thread(target=serve,args=(self.library,token),kwargs={'port':0,'processor':self.processor,'stop_event':stop,'ready_callback':on_ready})
+                thread.start()
+                try:
+                    self.assertTrue(ready.wait(5))
+                    for _ in range(60):
+                        if request('127.0.0.1:%d')==200:break
+                        time.sleep(.05)
+                    return request('host.docker.internal:%d'),request('attacker.example:%d')
+                finally:
+                    stop.set();thread.join(10)
+        self.assertEqual(run({}),(403,403))
+        self.assertEqual(run({'GET_FILES_ALLOW_DOCKER_HOST':'1'}),(200,403))
     def test_http_and_mcp_assembled_system_with_worker_recovery(self):
         body=b'Semiconductor patent research. Public fixture only.'
         self.processor.downloader=Downloader(self.library,transport=lambda url:(Connection(),Response(body,headers={'Content-Type':'text/plain'})))
