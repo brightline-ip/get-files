@@ -1,5 +1,6 @@
 import hashlib
 import json
+import gc
 import shutil
 import unittest
 import uuid
@@ -24,6 +25,7 @@ class PublicationRecoveryTests(unittest.TestCase):
         self.document_id = sha(self.source)
 
     def tearDown(self):
+        gc.collect()  # unreferenced SQLite connections keep the database locked on Windows
         shutil.rmtree(self.root, ignore_errors=True)
 
     def package(self, revision="normalizer-v1", checkpoint=None):

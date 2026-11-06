@@ -6,12 +6,14 @@ import json
 import os
 import signal
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 POLICY_VERSION = "parser-worker-policy-v1"
 MEMORY_LIMIT_BYTES = 1024 ** 3
 WORKER_MODULE = "corpus.extraction_worker"
+MAX_COUNTED_WAIT_SECONDS = 5.0
 _GATE_WRAPPER = (
     "import os,runpy,sys;"
     "gate=sys.stdin.buffer.readline();"
@@ -114,6 +116,23 @@ def _terminate_tree(process, close_job) -> None:
         process.wait()
 
 
+def _wait_while_awake(process, timeout: float) -> None:
+    """Wait up to timeout seconds of running time. Sleep or standby freezes this loop, and a
+    long gap between checks counts as one short interval, so a closed laptop can't use up the limit."""
+    remaining = timeout
+    last = time.monotonic()
+    while True:
+        try:
+            process.wait(timeout=min(1.0, max(remaining, 0.01)))
+            return
+        except subprocess.TimeoutExpired:
+            current = time.monotonic()
+            remaining -= min(current - last, MAX_COUNTED_WAIT_SECONDS)
+            last = current
+            if remaining <= 0:
+                raise
+
+
 def run_extraction_worker(python_executable: Path, arguments: list[str], cwd: Path,
                           temp_dir: Path, timeout: float) -> WorkerResult:
     executable = Path(python_executable).resolve(strict=True)
@@ -142,7 +161,7 @@ def run_extraction_worker(python_executable: Path, arguments: list[str], cwd: Pa
         process.stdin.flush()
         process.stdin.close()
         try:
-            process.wait(timeout=timeout)
+            _wait_while_awake(process, timeout)
         except subprocess.TimeoutExpired:
             _terminate_tree(process, close_job)
             raise WorkerRuntimeError("timeout") from None

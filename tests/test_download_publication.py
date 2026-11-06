@@ -1,5 +1,6 @@
 import hashlib
 import json
+import gc
 import shutil
 import time
 import unittest
@@ -33,6 +34,7 @@ class DownloadPublicationTests(unittest.TestCase):
         self.target = directory / "original.txt"
 
     def tearDown(self):
+        gc.collect()  # unreferenced SQLite connections keep the database locked on Windows
         shutil.rmtree(self.root, ignore_errors=True)
 
     def reserve(self):

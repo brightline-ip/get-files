@@ -152,8 +152,11 @@ class Library:
         if existing:
             return self.job(existing[0])
         document = self.document(previous['document_id'], previous['collection'])
-        ocr = document.get('manifest', {}).get('metadata', {}).get('ocr', {}) if document else {}
-        if not document or document['format'] != '.pdf' or not set(ocr.get('requested_pages', [])) - set(ocr.get('attempted_pages', [])):
+        manifest = document.get('manifest', {}) if document else {}
+        ocr = manifest.get('metadata', {}).get('ocr', {})
+        # Documents normalized before OCR existed have empty pages but no OCR record at all.
+        never_attempted = 'ocr' not in manifest.get('metadata', {}) and manifest.get('empty_pages')
+        if not document or document['format'] != '.pdf' or not (never_attempted or set(ocr.get('requested_pages', [])) - set(ocr.get('attempted_pages', []))):
             raise ValueError('No unattempted OCR pages; inspect blank/failed pages manually')
         return self.enqueue(previous['collection'], {'ocr_document_id': previous['document_id'],
             'idempotency_key': key, 'mode': 'corpus'}, ocr_continuation=True)

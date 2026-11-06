@@ -23,3 +23,8 @@ First public preview.
 - SSRF filter rejects NAT64 ranges. `start.ps1` token created owner-only. mTLS spoke defaults to loopback and its
   private keys are user-only. Node client uses the absolute Windows PowerShell path. Pip installs documented as
   version-pinned, not hash-pinned.
+
+## 0.1.0 (reliability) — 2026-11-05
+
+- Extraction time limits count running time, not time the computer was asleep.
+- OCR can continue for documents saved before OCR existed.

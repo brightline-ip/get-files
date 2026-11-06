@@ -1,4 +1,5 @@
 import os
+import gc
 import shutil
 import time
 import unittest
@@ -24,6 +25,7 @@ class ReconciliationRemediationTests(unittest.TestCase):
         self.processor = Processor(self.library, allowed_roots=[self.intake])
 
     def tearDown(self):
+        gc.collect()  # unreferenced SQLite connections keep the database locked on Windows
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_reserved_stage_survives_exception_and_reconciles_offline(self):
