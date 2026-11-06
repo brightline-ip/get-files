@@ -11,7 +11,7 @@ from pathlib import Path
 from .tagging import infer_tags, normalize_tags
 from .acquisition import validated_url, AcquisitionError
 from urllib.parse import parse_qsl, urlsplit
-from .publication import PublicationError, PublicationJournal
+from .publication import PublicationBusyError, PublicationError, PublicationJournal
 
 
 def encoded(value):
@@ -219,6 +219,16 @@ class Library:
     def recover(self):
         # Only call after acquiring the exclusive process worker lock.
         reconciliation = self.publications.reconcile()
+        for parent in (self.root / "downloads", self.root / "staging"):
+            if parent.is_dir():
+                for orphan in parent.glob("work-*"):
+                    if orphan.is_dir() and not orphan.with_name(orphan.name + ".publication-owned").exists():
+                        shutil.rmtree(orphan, ignore_errors=True)
+        for parent in (self.root / "downloads", self.root / "staging"):
+            if parent.is_dir():
+                for orphan in parent.glob("work-*"):
+                    if orphan.is_dir() and not orphan.with_name(orphan.name + ".publication-owned").exists():
+                        shutil.rmtree(orphan, ignore_errors=True)
         with self.connect() as db:
             db.execute("UPDATE jobs SET status='queued',available_at=?,updated_at=? WHERE status='working'", (time.time(), time.time()))
         return reconciliation
@@ -367,6 +377,9 @@ class Library:
             if artifact:
                 try:
                     self.publications.check_download_available(job_id)
+                except PublicationBusyError:
+                    result["warning"] = "Files are briefly locked by another program; check again shortly"
+                    return result
                 except Exception:
                     result["status"] = "reconciliation_required"
                     result["error_kind"] = "storage_integrity"
@@ -409,8 +422,11 @@ class Library:
                 item = dict(row)
                 selected = db.execute("SELECT manifest_json,status FROM documents WHERE id=?", (item["document_id"],)).fetchone()
                 if not selected or selected["status"] == "reconciliation_required":
-                    raise PublicationError("selected publication requires reconciliation")
-                self.publications.check_selected_available(item["document_id"], json.loads(selected["manifest_json"]))
+                    continue  # one unavailable document must not fail the whole search
+                try:
+                    self.publications.check_selected_available(item["document_id"], json.loads(selected["manifest_json"]))
+                except PublicationError:
+                    continue
                 item["origins"] = [json.loads(r[0]) for r in db.execute("SELECT metadata_json FROM memberships WHERE document_id=? AND collection=?", (item["document_id"], collection))]
                 item['title']=next((origin['title'] for origin in item['origins'] if origin.get('title')),item['document_id'])
                 item["tags"] = self._tags(db, collection, item["document_id"])

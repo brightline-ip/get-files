@@ -131,8 +131,8 @@ source. A changed original gets a new document ID and earlier versions stay arch
 ## Data locations
 
 Everything is under the data directory (`data\` by default): `corpus.sqlite3`, `files\` (originals),
-`documents\` (normalized text), `service-token.txt`, `service-state.json`, logs. Keep the directory together when
-you back it up. `scripts\backup-corpus.py` makes a coherent encrypted backup (key held with Windows DPAPI for the
+`documents\` (normalized text), `service-token.txt`, and `service.log` (or, if started with `start.ps1`, `service-state.json` and `service.*.log`). Keep the directory out of OneDrive, Dropbox and network folders, and keep it together when
+you back it up. Stop the service first; `scripts\backup-corpus.py` then makes a coherent encrypted backup. Its key is `security\backup-key.dpapi`, which you need to restore: uninstalling with Keep data keeps it (key held with Windows DPAPI for the
 current user). Exports go to the export root only.
 
 ## Security model

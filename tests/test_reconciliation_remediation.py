@@ -106,8 +106,8 @@ class ReconciliationRemediationTests(unittest.TestCase):
             self.library.document(manifest["document_id"], "test")
         with self.assertRaises(PublicationError):
             self.library.document(manifest["document_id"], "test")
-        with self.assertRaises(PublicationError):
-            self.library.search("test", "bound", include_incomplete=True)
+        # A quarantined document is left out of results: it must not fail the whole collection's search.
+        self.assertEqual(self.library.search("test", "bound", include_incomplete=True), [])
         self.assertEqual(self.library._document_raw(manifest["document_id"], "test")["status"], "reconciliation_required")
 
     def test_revocation_before_document_commit_does_not_resurrect_selection(self):

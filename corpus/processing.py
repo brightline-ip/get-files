@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import sys
 import time
 import uuid
@@ -14,7 +15,7 @@ from pathlib import Path
 
 from .acquisition import AcquisitionError, Downloader, challenge_page, validated_url
 from .storage import Library, digest, encoded
-from .publication import (JOURNAL_SCHEMA_VERSION, PublicationError, atomic_manifest,
+from .publication import (JOURNAL_SCHEMA_VERSION, PublicationBusyError, PublicationError, atomic_manifest,
                           publication_key, revision_identity)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -239,9 +240,13 @@ class Processor:
             key = self.library.publications.reserve(manifest, temp, directory)
             if completion:
                 self.library.publications.bind_completion(key, completion["job_id"], completion["collection"], completion.get("origin"))
+            state = self.library.publications.state(key)
+            if state in {"PUBLISHED", "STAGED", "VALIDATED"}:
+                # An earlier attempt got this far; its retained candidate is used and this copy is discarded.
+                return self.library.publications.resume(key)
+            if state != "RESERVED":
+                raise AcquisitionError("storage_integrity", "This document's earlier publication needs review; it was not replaced")
             temp.with_name(temp.name + ".publication-owned").write_text(key, encoding="ascii")
-            if self.library.publications.state(key) == "PUBLISHED":
-                return self.library.publications.publish(key)
             atomic_manifest(temp/"manifest.json", manifest)
             self.library.publications.staged(key)
             self.library.publications.validated(key)
@@ -351,6 +356,11 @@ class Processor:
             self.library.finish(job_id,status,error_kind=exc.kind,message=str(exc),delay=delay)
             if item.get("path"):
                 self.library.attempt(job_id,"LOCAL_IMPORT",None,exc.kind,exc.status,str(exc))
+        except (OSError,sqlite3.OperationalError,PublicationBusyError) as exc:
+            # Usually a file held for a moment by antivirus or a sync client.
+            message="A file could not be accessed ("+type(exc).__name__+"); source content omitted from diagnostics"
+            self.library.attempt(job_id,"STORE",None,"temporary_file_error",detail=type(exc).__name__)
+            self.library.finish(job_id,"retry_wait" if job["attempts"]<4 else "failed",error_kind="temporary_file_error",message=message,delay=min(300,10*2**(job["attempts"]-1)))
         except Exception as exc:
             self.library.attempt(job_id,"NORMALIZE",None,"extraction_failed",detail=type(exc).__name__)
             self.library.finish(job_id,"failed",error_kind="extraction_failed",message="Processing failed ("+type(exc).__name__+"); source content omitted from diagnostics")

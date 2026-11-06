@@ -10,6 +10,7 @@ import time
 import shutil
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
+from .publication import PublicationBusyError, PublicationError
 
 from .processing import Processor, WorkerLock
 from .storage import encoded
@@ -182,6 +183,10 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
                 return self.send_json({"error":"Not found"},404)
             except (ValueError,TypeError) as exc:
                 return self.send_json({"error":str(exc)},400)
+            except PublicationBusyError:
+                return self.send_json({"error":"Files are briefly locked by another program; try again shortly"},503)
+            except PublicationError:
+                return self.send_json({"error":"This document failed its integrity check and is unavailable; import it again"},409)
             except Exception:
                 return self.send_json({"error":"Internal error; inspect local service state"},500)
 
@@ -216,7 +221,7 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
                     results = []
                     for index,item in enumerate(items):
                         try:
-                            if isinstance(item,dict) and item.get('path') and not ipaddress.ip_address(self.client_address[0]).is_loopback:
+                            if isinstance(item,dict) and item.get('path') and (not ipaddress.ip_address(self.client_address[0]).is_loopback or self.headers.get('Host','').lower().startswith('host.docker.internal')):
                                 raise ValueError('Remote callers may submit URLs only; local file imports require a loopback client')
                             job = library.enqueue(body.get("collection"),item)
                             results.append({"index":index,"job_id":job["id"],"status":job["status"]})
@@ -235,6 +240,10 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
                 return self.send_json({"error":"Not found"},404)
             except (ValueError,TypeError) as exc:
                 return self.send_json({"error":str(exc)},400)
+            except PublicationBusyError:
+                return self.send_json({"error":"Files are briefly locked by another program; try again shortly"},503)
+            except PublicationError:
+                return self.send_json({"error":"This document failed its integrity check and is unavailable; import it again"},409)
             except Exception:
                 return self.send_json({"error":"Internal error; inspect local service state"},500)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import json
 import os
 from pathlib import Path
@@ -72,8 +73,11 @@ def main():
         Processor(library,allowed_roots=args.import_root).drain()
     elif args.command == "serve":
         from .server import serve
+        if sys.stdout is None or sys.stderr is None:
+            log=(args.data/'service.log').open('a',encoding='utf-8',buffering=1)
+            sys.stdout,sys.stderr=sys.stdout or log,sys.stderr or log
         config=json.loads(args.spoke_config.read_text(encoding='utf-8-sig')) if args.spoke_config else None
-        serve(library,(args.token_file or args.data/'service-token.txt').read_text().strip(),args.host,args.port,processor=Processor(library,allowed_roots=args.import_root),spoke_config=config)
+        serve(library,(args.token_file or args.data/'service-token.txt').read_text(encoding='utf-8-sig').strip(),args.host,args.port,processor=Processor(library,allowed_roots=args.import_root),spoke_config=config)
 
 
 if __name__ == "__main__":

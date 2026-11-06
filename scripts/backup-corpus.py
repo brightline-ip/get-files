@@ -22,6 +22,9 @@ try:
         if args.destination is None:raise ValueError('A new restore destination is required')
         result=restore_backup(args.archive,args.destination,key)
     print(json.dumps(result))
+except RuntimeError as exc:
+    print('Backup could not start: stop Get Files first ('+str(exc)+').',file=sys.stderr)
+    raise SystemExit(1)
 except Exception as exc:
     print('Backup operation failed ('+type(exc).__name__+'); existing archives and credentials were not replaced.',file=sys.stderr)
     raise SystemExit(1)

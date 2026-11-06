@@ -60,7 +60,7 @@ if (-not $SkipNode) {
 $dataIsNew=-not (Test-Path -LiteralPath $DataPath)
 $dataIsEmpty=$dataIsNew -or -not (Get-ChildItem -LiteralPath $DataPath -Force | Select-Object -First 1)
 New-Item -ItemType Directory -Force -Path $DataPath | Out-Null
-$user=[System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$user='*'+[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value  # by SID: names can fail for some Microsoft or work accounts
 if ($dataIsEmpty) {
     & icacls.exe $DataPath /inheritance:r /grant:r "${user}:(OI)(CI)F" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not restrict the data directory to the current user.' }

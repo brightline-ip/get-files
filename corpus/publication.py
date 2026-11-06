@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sqlite3
 import time
 from pathlib import Path
 
@@ -12,6 +13,48 @@ JOURNAL_SCHEMA_VERSION = 1
 
 class PublicationError(RuntimeError):
     pass
+
+
+class PublicationBusyError(PublicationError):
+    """Files are briefly held by another program (antivirus, sync client); nothing is wrong with them."""
+
+
+def is_transient(exc):
+    if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
+        return False
+    return isinstance(exc, (OSError, sqlite3.OperationalError))
+
+
+def replace_with_retry(source, target, attempts=8, wait=0.5):
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(wait)
+
+
+class PublicationBusyError(PublicationError):
+    """Files are briefly held by another program (antivirus, sync client); nothing is wrong with them."""
+
+
+def is_transient(exc):
+    if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
+        return False
+    return isinstance(exc, (OSError, sqlite3.OperationalError))
+
+
+def replace_with_retry(source, target, attempts=8, wait=0.5):
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(wait)
 
 
 def encoded(value):
@@ -147,7 +190,7 @@ class PublicationJournal:
                 db.execute("UPDATE publication_journal SET state='CONFLICT',detail=?,updated_at=? WHERE publication_key=?",
                            ("reservation identity mismatch", stamp, key))
                 raise PublicationError("publication identity conflict")
-            if row and row["state"] == "FAILED":
+            if row and row["state"] in {"FAILED", "RESERVED"}:
                 db.execute("UPDATE publication_journal SET state='RESERVED',candidate_dir=?,manifest_json=?,manifest_sha256=?,detail=NULL,updated_at=? WHERE publication_key=?",
                            (str(candidate), encoded(manifest), manifest_digest(manifest), stamp, key))
                 return key
@@ -307,7 +350,7 @@ class PublicationJournal:
             # Exact duplicate candidate is retained; publication never deletes recovery evidence.
         elif candidate.exists():
             self._validate_download_path(row, candidate)
-            os.replace(candidate, target)
+            replace_with_retry(candidate, target)
         elif not target.exists():
             if row["state"] == "PUBLISHED":
                 self._mark_download_unavailable(row, "candidate and target are missing")
@@ -343,6 +386,18 @@ class PublicationJournal:
             if result.rowcount != 1:
                 actual = db.execute("SELECT state FROM publication_journal WHERE publication_key=?", (key,)).fetchone()
                 raise PublicationError(f"publication transition {expected}->{state} refused from {actual[0] if actual else 'missing'}")
+
+    def resume(self, key):
+        """Finish a publication an earlier attempt left part-way, using its retained candidate."""
+        if self.state(key) == "STAGED":
+            self.validated(key)
+        return self.publish(key)
+
+    def resume(self, key):
+        """Finish a publication an earlier attempt left part-way, using its retained candidate."""
+        if self.state(key) == "STAGED":
+            self.validated(key)
+        return self.publish(key)
 
     def staged(self, key):
         self.transition(key, "RESERVED", "STAGED")
@@ -388,7 +443,7 @@ class PublicationJournal:
         elif candidate.exists():
             validate_package(self.root, candidate, manifest, row["document_id"], row["revision_identity"], target)
             target.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(candidate, target)
+            replace_with_retry(candidate, target)
         elif not target.exists():
             self.transition(key, row["state"], "RECONCILIATION_REQUIRED", "candidate and target are missing")
             raise PublicationError("publication artifacts are missing")
@@ -432,6 +487,9 @@ class PublicationJournal:
                         self.publish(key)
                 outcomes.append({"publication_key": key, "state": self._row(key)["state"]})
             except Exception as exc:
+                if is_transient(exc):
+                    outcomes.append({"publication_key": key, "state": self._row(key)["state"], "error": "temporarily unreadable"})
+                    continue
                 current = self._row(key)
                 if row["state"] == "PUBLISHED":
                     self._mark_selected_unavailable(row)
@@ -447,7 +505,8 @@ class PublicationJournal:
         origin_json = encoded(origin) if origin is not None else None
         with self.library.connect() as db:
             old = db.execute("SELECT * FROM publication_job_completions WHERE job_id=?", (job_id,)).fetchone()
-            if old and (old["publication_key"], old["collection"], old["origin_json"]) != (key, collection, origin_json):
+            # The origin carries retrieval times, which differ on every retry of the same job; the first is kept.
+            if old and (old["publication_key"], old["collection"]) != (key, collection):
                 raise PublicationError("job completion binding conflict")
             db.execute("INSERT OR IGNORE INTO publication_job_completions VALUES(?,?,?,?,?,?,?)",
                        (key, job_id, collection, origin_json, "PENDING", stamp, stamp))
@@ -507,6 +566,8 @@ class PublicationJournal:
             validate_package(self.root, Path(row["target_dir"]), manifest, document_id, revision,
                              allow_legacy=allow_legacy)
         except Exception as exc:
+            if is_transient(exc):
+                raise PublicationBusyError("publication files are temporarily locked") from exc
             self._mark_selected_unavailable(row)
             self.transition(key, "PUBLISHED", "RECONCILIATION_REQUIRED", str(exc)[:1000])
             raise PublicationError("selected publication failed integrity validation") from exc
@@ -577,6 +638,9 @@ class PublicationJournal:
                 outcomes.append({"publication_key": key, "kind": "download",
                                  "state": self.download_state(key)})
             except Exception as exc:
+                if is_transient(exc):
+                    outcomes.append({"publication_key": key, "kind": "download", "state": self.download_state(key), "error": "temporarily unreadable"})
+                    continue
                 current = self._download_row(key)
                 if current["state"] == "PUBLISHED":
                     self._mark_download_unavailable(current, str(exc))
@@ -607,6 +671,8 @@ class PublicationJournal:
         try:
             self._validate_download_path(row, Path(row["target_path"]))
         except Exception as exc:
+            if is_transient(exc):
+                raise PublicationBusyError("download files are temporarily locked") from exc
             with self.library.connect() as db:
                 db.execute("UPDATE download_publication_journal SET state='RECONCILIATION_REQUIRED',detail=?,updated_at=? WHERE job_id=?",
                            (str(exc)[:1000], time.time(), job_id))

@@ -33,8 +33,14 @@ try {
         $task = $asTaskAction.Invoke($null, @($Operation))
         if (-not $task.Wait(10000)) { throw 'Operation timeout' }
     }
+    # Any English recognizer: en-GB, en-AU, en-CA and en-IN Windows installs do not have en-US.
     $language = New-Object Windows.Globalization.Language('en-US')
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($language)
+    if ($null -eq $engine) {
+        foreach ($available in [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages) {
+            if ($available.LanguageTag -like 'en-*') { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($available); break }
+        }
+    }
     if ($null -eq $engine) { throw 'English OCR unavailable' }
     $source = Await-Result ([Windows.Storage.StorageFile]::GetFileFromPathAsync($InputPdf)) ([Windows.Storage.StorageFile])
     $pdf = Await-Result ([Windows.Data.Pdf.PdfDocument]::LoadFromFileAsync($source)) ([Windows.Data.Pdf.PdfDocument])

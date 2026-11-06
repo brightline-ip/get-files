@@ -3,7 +3,7 @@
   Removes this Get Files installation: what Setup created, nothing else.
 .DESCRIPTION
   Stops this installation's service, removes its shortcuts and optional scheduled task, and deletes its
-  program files. Your library (data\, intake\) is kept unless you choose to delete it.
+  program files. Your library and backup key (data\, intake\, security\) are kept unless you choose to delete it.
   Python and Node.js stay installed. Files you exported to Documents\Get Files are never touched. MCP client entries you added are not edited.
 .PARAMETER RemoveData
   Also permanently delete your library.
@@ -83,7 +83,7 @@ try {
         Remove-Tree $root
         Write-Good 'Program files and data removed'
     } else {
-        $keep = @('data', 'intake', $script:GfMarker)
+        $keep = @('data', 'intake', 'security', $script:GfMarker)
         foreach ($child in @(Get-ChildItem -LiteralPath $root -Force)) {
             if ($child.Name -notin $keep) { Remove-Tree $child.FullName }
         }

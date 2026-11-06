@@ -10,7 +10,7 @@ import threading
 import time
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qsl, urlencode
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit, parse_qsl, urlencode
 
 
 def diagnostic_url(value):
@@ -44,7 +44,12 @@ def validated_url(value):
 
 
 # NAT64 prefixes are "global" to the ipaddress module but can embed private IPv4 destinations.
-NAT64_NETWORKS = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
+NAT64_NETWORKS = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"),
+                  ipaddress.ip_network("2002::/16"), ipaddress.ip_network("2001::/32"))  # plus 6to4 and Teredo
+STALL_SECONDS = 30
+URL_SAFE = "/%:@!$&'()*+,;=~-._"
+# Saved under a neutral name: a fetched page must not be able to place a runnable file in the user's folders.
+RUNNABLE_EXTENSIONS = {".exe",".com",".scr",".pif",".msi",".msp",".bat",".cmd",".ps1",".psm1",".vbs",".vbe",".js",".jse",".wsf",".wsh",".hta",".lnk",".url",".reg",".dll",".cpl",".jar",".appx",".msix",".iso",".img",".vhd",".vhdx",".scf",".inf",".mht",".mhtml",".xll",".xlam",".docm",".xlsm",".pptm",".dotm"}
 
 
 def public_addresses(host, port, lookup=socket.getaddrinfo):
@@ -95,12 +100,18 @@ def open_public(url, timeout=45):
             conn = DeadlineConnection(u.hostname,port,timeout=remaining)
             conn.deadline_timer=timer
             conn.sock = sock
-            conn.request("GET", urlunsplit(("","",u.path or "/",u.query,"")), headers={
+            # Paths copied from documents often contain spaces or non-ASCII characters.
+            conn.request("GET", urlunsplit(("","",quote(u.path or "/",safe=URL_SAFE),quote(u.query,safe=URL_SAFE+"?"),"")), headers={
                 "User-Agent":"SourceCorpus/1.0 (local research document library)",
                 "Accept":"application/pdf,text/html,application/xml,text/plain,*/*;q=0.5",
                 "Accept-Encoding":"identity",
             })
-            return conn, conn.getresponse()
+            response = conn.getresponse()
+            # Headers arrived. From here the 180-second budget in download() and a stall limit apply.
+            timer.cancel()
+            conn.deadline_timer = None
+            sock.settimeout(STALL_SECONDS)
+            return conn, response
         except Exception as exc:
             timer.cancel()
             sock.close()
@@ -223,9 +234,15 @@ class Downloader:
                     raise AcquisitionError("format_mismatch", "Requested PDF but received another file type")
                 extension = ".pdf" if head.startswith(b"%PDF-") else {"text/html":".html","application/xhtml+xml":".html","text/plain":".txt","application/xml":".xml","text/xml":".xml","application/json":".json","text/csv":".csv","application/vnd.openxmlformats-officedocument.wordprocessingml.document":".docx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":".xlsx","application/vnd.openxmlformats-officedocument.presentationml.presentation":".pptx","application/epub+zip":".epub"}.get(media)
                 extension = extension or Path(urlsplit(current).path).suffix.lower() or ".bin"
+                if extension in RUNNABLE_EXTENSIONS:
+                    extension = ".bin"
                 return {"final_url":diagnostic_url(current),"http_status":status,"media_type":media,"extension":extension,"bytes":size,"fetched_at":time.time()}
             except AcquisitionError:
                 raise
+            except ssl.SSLCertVerificationError as exc:
+                raise AcquisitionError("tls_error","The source's security certificate could not be verified") from exc
+            except (http.client.InvalidURL,UnicodeError) as exc:
+                raise AcquisitionError("unsafe_url","The URL contains characters that cannot be requested") from exc
             except (OSError,http.client.HTTPException,ValueError) as exc:
                 kind = "tls_error" if isinstance(exc,ssl.SSLError) else "dns_error" if isinstance(exc,socket.gaierror) else "connection_error"
                 raise AcquisitionError(kind,"Source connection failed ("+type(exc).__name__+")",transient=True) from exc

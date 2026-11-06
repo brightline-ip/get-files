@@ -26,6 +26,8 @@ from contextlib import contextmanager
 MAX_OCR_PAGES = 8               # pages per helper process (the helper enforces 1-8)
 MAX_PAGES_PER_CALL = 64         # new pages attempted per extraction call
 TIME_BUDGET_SECONDS = 75.0      # no new helper batch starts after this; worker deadline is 120 s
+HELPER_DEADLINE_SECONDS = 105.0 # a running batch stops here, so the worker returns what it has instead of being killed
+_ocr_started = None
 RENDER_DPI = 200                # fixed render scale; 300 dpi measured no gain for this engine
 MAX_RENDER_PIXELS = 2600        # longest rendered side; the helper rejects larger output
 OCR_VERSION = 'windows-ocr-empty-pages-v2'
@@ -86,6 +88,12 @@ def _valid_rows(rows, pages):
                    or len(r['text']) > 200000 for r in rows)
 
 
+def helper_timeout(now=time.monotonic):
+    if _ocr_started is None:
+        return 60
+    return max(5, min(60, HELPER_DEADLINE_SECONDS - (now() - _ocr_started)))
+
+
 def recognize_pages(source, pages):
     """Only called inside the existing bounded extraction worker."""
     if os.name != 'nt':
@@ -106,7 +114,7 @@ def recognize_pages(source, pages):
             env=environment, cwd=scratch, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         close_job = _windows_job(process)
-        process.communicate(b'go\n', timeout=60)
+        process.communicate(b'go\n', timeout=helper_timeout())
         if process.returncode or not output.is_file() or output.stat().st_size > 12 * 1024**2:
             raise RuntimeError('OCR did not return a bounded result')
         payload = json.loads(output.read_text(encoding='utf-8'))
@@ -240,7 +248,8 @@ def _apply_pdf_ocr(source, extraction, backend, state, config):
     current = list(todo)
     metadata['status'] = 'incomplete'
     backend = backend or recognize_pages
-    started = time.monotonic()
+    global _ocr_started
+    started = _ocr_started = time.monotonic()
     attempted_now = []
     try:
         while todo and (not attempted_now or time.monotonic() - started < TIME_BUDGET_SECONDS):

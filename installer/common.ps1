@@ -140,7 +140,8 @@ function Get-GfServiceProcesses([string]$Root) {
     $all = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue)
     $owned = @{}
     foreach ($p in $all) {
-        if ([string]$p.CommandLine -notlike '*-m corpus*') { continue }
+        # start.ps1 quotes each argument and this installer does not, so both forms must match.
+        if ([string]$p.CommandLine -notmatch '-m"?\s+"?corpus') { continue }
         if ([string]$p.ExecutablePath -ieq $venv) { $owned[[int]$p.ProcessId] = $true; continue }
         $parent = $all | Where-Object { $_.ProcessId -eq $p.ParentProcessId } | Select-Object -First 1
         if ($parent -and [string]$parent.ExecutablePath -ieq $venv) { $owned[[int]$parent.ProcessId] = $true }

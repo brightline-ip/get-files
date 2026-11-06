@@ -14,7 +14,7 @@ export class CorpusClient {
     if(!route.startsWith('/v1/'))throw new Error('Invalid corpus API route');
     const token=(await fs.readFile(this.tokenFile,'utf8')).trim();
     const response=await fetch(this.baseUrl+route,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(20000)});
-    if(!response.ok){await response.body?.cancel();throw new Error(`Get Files returned HTTP ${response.status}`);}
+    if(!response.ok){let reason='';try{const failure=await response.json();if(typeof failure?.error==='string')reason=': '+failure.error.slice(0,300);}catch{}throw new Error(`Get Files returned HTTP ${response.status}${reason}`);}
     if(!response.headers.get('content-type')?.includes('application/json')){await response.body?.cancel();throw new Error('Get Files returned a non-JSON response');}
     const chunks=[];let bytes=0;
     for await(const block of response.body){bytes+=block.length;if(bytes>8*1024*1024)throw new Error('Get Files JSON response exceeds limit');chunks.push(block);}
