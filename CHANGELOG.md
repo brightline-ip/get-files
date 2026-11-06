@@ -47,3 +47,4 @@ First public preview.
 
 - Corrected claims in the README and disclaimer, and the advice given when a document fails its integrity check.
 - Setup creates the `intake` folder. The download request now identifies itself as `GetFiles/0.1`.
+- Setup and the README give commands that run under default Windows script settings, and an exact import command.

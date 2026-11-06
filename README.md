@@ -44,6 +44,9 @@ client's configuration. Running Setup again repairs or updates the installation 
 
 The service does not start with Windows; use **Start Get Files** after a restart (AI assistants start it on demand).
 
+PowerShell may refuse to run the `.ps1` commands in this README under default Windows settings. If so, run them as
+`powershell -ExecutionPolicy Bypass -File .\get-files.ps1 ...`, which applies to that one run only.
+
 ## Install from source
 
 ```powershell
@@ -155,7 +158,9 @@ current user). Exports go to the export root only.
   and it does not bypass logins, paywalls or bot challenges. HTTP 401/403 and recognized challenge pages become
   `needs_access`. **A login, block or error page served as a normal page may not be recognized and can be saved as
   `ready`, so check what you got.** When a site blocks it, open the page in your own browser, save the file, put it in
-  `intake\` and import it (`/v1/ingest` or `corpus.ps1`, with `source_url` to keep the provenance).
+  the `intake` folder and, from the install folder with Get Files running, run
+  `powershell -ExecutionPolicy Bypass -File .\corpus.ps1 enqueue --path "<full path to the file>" --collection research`.
+  To record where it came from, use `POST /v1/ingest` with `source_url`, or a manifest with `corpus.ps1 ingest`.
 - **Copyright stays your responsibility.** Downloaded material remains the property of its owners. Store and use it
   only as the law and your licenses allow, and do not redistribute it from this library without permission.
 - **Data stays local.** Nothing is uploaded anywhere by Get Files. If you connect an AI assistant over MCP, the

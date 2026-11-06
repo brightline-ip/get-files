@@ -11,7 +11,7 @@ try {
     }
     Write-Host "Get Files is running on this computer at http://127.0.0.1:$($config.port)." -ForegroundColor Green
     Write-Host 'Use it from an AI assistant (MCP), or from PowerShell:'
-    Write-Host "  & '$root\get-files.ps1' https://example.org/paper.pdf --pdf"
+    Write-Host "  powershell -ExecutionPolicy Bypass -File '$root\get-files.ps1' https://example.org/paper.pdf --pdf"
     Read-Host 'Press Enter to close' | Out-Null
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red

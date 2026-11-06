@@ -198,13 +198,13 @@ try {
     Write-Utf8NoBom (Join-Path $InstallRoot 'MCP-setup.json') $mcp
 
     if (-not $NoStart) {
-        if (-not (Start-GfService $InstallRoot $Port)) { throw "Get Files did not start. To see why, run this in PowerShell: & '$InstallRoot\start.ps1'" }
+        if (-not (Start-GfService $InstallRoot $Port)) { throw "Get Files did not start. To see why, run this in PowerShell: powershell -ExecutionPolicy Bypass -File '$InstallRoot\start.ps1'" }
         Write-Good "Get Files is running at http://127.0.0.1:$Port (this computer only)"
     }
 
     Write-Host ''
     Write-Good 'Setup finished.'
-    Write-Info "Try it: & '$InstallRoot\get-files.ps1' https://example.org/paper.pdf --pdf"
+    Write-Info "Try it: powershell -ExecutionPolicy Bypass -File '$InstallRoot\get-files.ps1' https://example.org/paper.pdf --pdf"
     if ($node) { Write-Info "To connect an AI assistant, merge $(Join-Path $InstallRoot 'MCP-setup.json') into its MCP configuration." }
     Write-Info 'Your library stays in the install folder; exports go to Documents\Get Files. Local files are read only from the intake folder.'
     Write-Info 'After restarting Windows, "Start Get Files" starts it again. AI assistants start it on demand.'
