@@ -37,6 +37,19 @@ class CorpusOcrTests(unittest.TestCase):
             self.assertNotIn('ocr',result.metadata)
             self.assertEqual(result.sections[0].text,'')
 
+    def test_document_from_before_ocr_existed_can_continue(self):
+        with working_directory(TEST_PARENT) as root:
+            library=Library(root/'data')
+            job={'status':'needs_ocr','document_id':'a'*64,'collection':'legal'}
+            def saved(empty_pages):
+                return {'format':'.pdf','manifest':{'metadata':{'pages':4},'empty_pages':empty_pages}}
+            with patch.object(library,'job',return_value=job),patch.object(library,'enqueue',return_value={'id':'new'}) as enqueue:
+                with patch.object(library,'document',return_value=saved(['page:1','page:2'])):
+                    self.assertEqual(library.continue_ocr('b'*32),{'id':'new'})
+                self.assertEqual(enqueue.call_args.args[1]['ocr_document_id'],'a'*64)
+                with patch.object(library,'document',return_value=saved([])),self.assertRaises(ValueError):
+                    library.continue_ocr('c'*32)
+
     # Timing-dependent: the 66-page fixture needs one full 64-page OCR call inside the
     # adapter's 75 s budget and 120 s worker deadline. On a slow or loaded machine, or
     # when the Windows OCR engine is unavailable or misbehaves, a page is left

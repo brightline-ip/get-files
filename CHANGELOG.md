@@ -28,3 +28,8 @@ First public preview.
 
 - Extraction time limits count running time, not time the computer was asleep.
 - OCR can continue for documents saved before OCR existed.
+
+## 0.1.0 (installer) — 2026-11-06
+
+- `Setup.cmd`: one-click Windows installer with Start Menu shortcuts and a clean uninstaller.
+- On-demand start honours a non-default port. Python packages install from wheels only.

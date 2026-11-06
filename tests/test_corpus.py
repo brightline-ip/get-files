@@ -231,7 +231,10 @@ class CorpusTests(unittest.TestCase):
             pdf_link(b'<a href="a.pdf">A</a><a href="b.pdf">B</a>','https://example.com/')
 
     def test_pdf_keeps_rotated_text_and_flags_blank_page(self):
-        from reportlab.pdfgen import canvas
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            self.skipTest('reportlab is a test-only package')
         source=self.root/'rotated.pdf'
         pdf=canvas.Canvas(str(source))
         pdf.drawString(70,700,'Normal legal clause')

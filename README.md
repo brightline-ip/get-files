@@ -28,7 +28,23 @@ verified.
 - Python 3.12 and Node.js 24 or newer (with npm).
 - PowerShell 5.1 or later, a Windows OCR language pack (English is installed by default) for OCR.
 
-## Install
+## Install (easiest)
+
+1. Download the zip from the release page and check its SHA-256 against the value in the release notes:
+   `Get-FileHash .\get-files-0.1.0.zip -Algorithm SHA256`
+2. Right-click the zip, **Extract All**, open the folder and double-click **Setup.cmd**. The script is not code-signed,
+   so Windows SmartScreen may warn you; choose More info, Run anyway only if the checksum matched.
+3. Setup checks for Python and Node.js and offers to install anything missing through Windows Package Manager. It
+   installs nothing without your yes, and it needs no Docker and no API key.
+
+It installs to `%LOCALAPPDATA%\Brightline\GetFiles`, starts the service, and adds **Start Get Files**, **Stop Get Files** and
+**Uninstall Get Files** to the Start Menu. To connect an AI assistant, merge the `MCP-setup.json` file Setup writes into your
+client's configuration. Running Setup again repairs or updates the installation and keeps your library.
+`Setup.cmd -DryRun` shows what it would do without changing anything.
+
+The service does not start with Windows; use **Start Get Files** after a restart (AI assistants start it on demand).
+
+## Install from source
 
 ```powershell
 git clone <this repository> get-files

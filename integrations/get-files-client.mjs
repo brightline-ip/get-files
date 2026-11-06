@@ -27,8 +27,8 @@ export class GetFilesClient extends CorpusClient {
       return;
     } catch(error) {
       if(!['ECONNREFUSED'].includes(error.cause?.code))throw error;
-      if(!this.autoStart||this.baseUrl!=='http://127.0.0.1:8766')throw error;
-      const result=spawnSync(powershellExe,['-NoProfile','-File',path.join(root,'start.ps1'),'-Background'],{windowsHide:true,stdio:'ignore',timeout:45000});
+      if(!this.autoStart||!/^http:\/\/127\.0\.0\.1:\d+$/.test(this.baseUrl))throw error;
+      const result=spawnSync(powershellExe,['-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(root,'start.ps1'),'-Background','-Port',new URL(this.baseUrl).port],{windowsHide:true,stdio:'ignore',timeout:45000});
       if(result.status!==0)throw new Error('Could not start Get Files; inspect its local service logs');
     }
   }

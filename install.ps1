@@ -42,7 +42,7 @@ if (-not $SkipPython) {
     $version=& $venvPython -c 'import sys;print(sys.version_info[0],sys.version_info[1],sep=chr(46))'  # no double quotes: Windows PowerShell 5.1 strips them
     if ($version -ne '3.12') { Write-Warning "Python $version found; Python 3.12 is the tested version." }
     Write-Host 'Installing Python packages from requirements.lock...'
-    & $venvPython -m pip install --disable-pip-version-check -r (Join-Path $root 'requirements.lock')
+    & $venvPython -m pip install --disable-pip-version-check --only-binary=:all: -r (Join-Path $root 'requirements.lock')
     if ($LASTEXITCODE -ne 0) { throw 'pip install failed.' }
 }
 
