@@ -186,7 +186,7 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
             except PublicationBusyError:
                 return self.send_json({"error":"Files are briefly locked by another program; try again shortly"},503)
             except PublicationError:
-                return self.send_json({"error":"This document failed its integrity check and is unavailable; import it again"},409)
+                return self.send_json({"error":"This document failed its integrity check and is unavailable. Restore it from a backup; the rest of the library is unaffected"},409)
             except Exception:
                 return self.send_json({"error":"Internal error; inspect local service state"},500)
 
@@ -243,7 +243,7 @@ def serve(library, token, host="127.0.0.1", port=8766, *, stop_event=None, ready
             except PublicationBusyError:
                 return self.send_json({"error":"Files are briefly locked by another program; try again shortly"},503)
             except PublicationError:
-                return self.send_json({"error":"This document failed its integrity check and is unavailable; import it again"},409)
+                return self.send_json({"error":"This document failed its integrity check and is unavailable. Restore it from a backup; the rest of the library is unaffected"},409)
             except Exception:
                 return self.send_json({"error":"Internal error; inspect local service state"},500)
 

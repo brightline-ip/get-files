@@ -42,3 +42,8 @@ First public preview.
 - OCR works with any English Windows language pack, not only en-US, and a slow batch stops before the worker limit so finished pages are kept.
 - Downloaded programs and scripts are saved with a neutral `.bin` name. 6to4 and Teredo addresses are refused. URLs with spaces work.
 - Keep-data uninstall keeps the backup key. A service started with no console writes `data\service.log`. Stop recognizes a service started on demand.
+
+## 0.1.0 (fact-check) — 2026-11-06
+
+- Corrected claims in the README and disclaimer, and the advice given when a document fails its integrity check.
+- Setup creates the `intake` folder. The download request now identifies itself as `GetFiles/0.1`.

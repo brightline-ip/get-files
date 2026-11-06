@@ -36,27 +36,6 @@ def replace_with_retry(source, target, attempts=8, wait=0.5):
             time.sleep(wait)
 
 
-class PublicationBusyError(PublicationError):
-    """Files are briefly held by another program (antivirus, sync client); nothing is wrong with them."""
-
-
-def is_transient(exc):
-    if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
-        return False
-    return isinstance(exc, (OSError, sqlite3.OperationalError))
-
-
-def replace_with_retry(source, target, attempts=8, wait=0.5):
-    for attempt in range(attempts):
-        try:
-            os.replace(source, target)
-            return
-        except PermissionError:
-            if attempt == attempts - 1:
-                raise
-            time.sleep(wait)
-
-
 def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -386,12 +365,6 @@ class PublicationJournal:
             if result.rowcount != 1:
                 actual = db.execute("SELECT state FROM publication_journal WHERE publication_key=?", (key,)).fetchone()
                 raise PublicationError(f"publication transition {expected}->{state} refused from {actual[0] if actual else 'missing'}")
-
-    def resume(self, key):
-        """Finish a publication an earlier attempt left part-way, using its retained candidate."""
-        if self.state(key) == "STAGED":
-            self.validated(key)
-        return self.publish(key)
 
     def resume(self, key):
         """Finish a publication an earlier attempt left part-way, using its retained candidate."""

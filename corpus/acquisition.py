@@ -102,7 +102,7 @@ def open_public(url, timeout=45):
             conn.sock = sock
             # Paths copied from documents often contain spaces or non-ASCII characters.
             conn.request("GET", urlunsplit(("","",quote(u.path or "/",safe=URL_SAFE),quote(u.query,safe=URL_SAFE+"?"),"")), headers={
-                "User-Agent":"SourceCorpus/1.0 (local research document library)",
+                "User-Agent":"GetFiles/0.1 (local research document library)",
                 "Accept":"application/pdf,text/html,application/xml,text/plain,*/*;q=0.5",
                 "Accept-Encoding":"identity",
             })

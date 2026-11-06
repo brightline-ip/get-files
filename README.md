@@ -7,7 +7,7 @@ its provenance, extracts the text (flagging scanned PDF pages for Windows OCR), 
 keyword. Ask for a source once; later, retrieve only the few page-addressable passages a task needs instead of
 re-downloading or pasting whole documents.
 
-It is built for IP practitioners and researchers who collect decisions, statutes, office actions, articles and
+It is built for IP practitioners and researchers who collect publicly available decisions, statutes, articles and
 other public sources, and who want an AI assistant (through MCP) or a script to fetch and recall them reliably.
 All data stays on your computer. See [DISCLAIMER.md](DISCLAIMER.md) — outputs are not legal advice and must be
 verified.
@@ -16,9 +16,9 @@ verified.
 
 - Fetch one URL or a batch of up to 100; **download-only**, **corpus** (extract + index) or **both** modes.
 - Request an actual PDF (`--pdf`), including an unambiguous PDF link behind a landing page.
-- Save each original once under its SHA-256, verify an expected hash when you know it, and record every attempt.
+- Save each original under its SHA-256, verify an expected hash when you know it, and record every attempt. The same file is not extracted twice; the default `both` mode keeps one copy with the download and one with the extracted text.
 - Extract text from PDF, HTML, Word, Excel, PowerPoint, EPUB and plain text with bounded, resource-limited workers.
-- Flag image-only PDF pages and run bounded **Windows OCR** on request; OCR output is marked `needs_review`.
+- Run bounded **Windows OCR** automatically on image-only PDF pages, with continuations on request; OCR output is marked `needs_review`, and neither `needs_review` nor `needs_ocr` documents appear in default search.
 - Tag documents by subject and search them with SQLite FTS5 keyword ranking (not semantic search).
 - Expose everything through a **CLI**, a **loopback REST API**, a **Node client** and an **MCP server**.
 
@@ -152,7 +152,10 @@ current user). Exports go to the export root only.
 
 - **Respect the sources.** You are responsible for following each site's terms of service, `robots.txt`, rate limits
   and access rules. The tool honors HTTP 429/Retry-After with backoff, but it does not read `robots.txt` for you
-  and it does not bypass logins, paywalls or bot challenges (those become `needs_access`).
+  and it does not bypass logins, paywalls or bot challenges. HTTP 401/403 and recognized challenge pages become
+  `needs_access`. **A login, block or error page served as a normal page may not be recognized and can be saved as
+  `ready`, so check what you got.** When a site blocks it, open the page in your own browser, save the file, put it in
+  `intake\` and import it (`/v1/ingest` or `corpus.ps1`, with `source_url` to keep the provenance).
 - **Copyright stays your responsibility.** Downloaded material remains the property of its owners. Store and use it
   only as the law and your licenses allow, and do not redistribute it from this library without permission.
 - **Data stays local.** Nothing is uploaded anywhere by Get Files. If you connect an AI assistant over MCP, the

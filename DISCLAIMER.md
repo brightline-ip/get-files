@@ -14,7 +14,7 @@ Get Files is a public preview research and workflow aid published by Brightline 
   confidential or export-controlled material through a service unless your professional obligations and client
   consent permit it.
 - **Third-party sources and terms.** You are responsible for complying with the terms of use, robots.txt
-  directives, rate limits and copyright of every site and document you access with this software, using your own
-  credentials where access is restricted.
+  directives, rate limits and copyright of every site and document you access with this software, and for your
+  right to access it. The software does not log in to anything.
 - **No warranty.** The software is provided "AS IS", without warranties or conditions of any kind, as stated in
   the Apache License 2.0, and Brightline IP is not liable for its use.

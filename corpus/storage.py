@@ -224,11 +224,6 @@ class Library:
                 for orphan in parent.glob("work-*"):
                     if orphan.is_dir() and not orphan.with_name(orphan.name + ".publication-owned").exists():
                         shutil.rmtree(orphan, ignore_errors=True)
-        for parent in (self.root / "downloads", self.root / "staging"):
-            if parent.is_dir():
-                for orphan in parent.glob("work-*"):
-                    if orphan.is_dir() and not orphan.with_name(orphan.name + ".publication-owned").exists():
-                        shutil.rmtree(orphan, ignore_errors=True)
         with self.connect() as db:
             db.execute("UPDATE jobs SET status='queued',available_at=?,updated_at=? WHERE status='working'", (time.time(), time.time()))
         return reconciliation

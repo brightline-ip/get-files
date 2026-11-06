@@ -166,6 +166,7 @@ try {
     }
     # Clear the "downloaded from the Internet" mark on the copies this installation runs.
     Get-ChildItem -LiteralPath $InstallRoot -Recurse -File -Include *.ps1, *.cmd, *.py, *.mjs, *.js | Unblock-File -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot 'intake') | Out-Null
     Write-Good 'Program files copied'
 
     $log = Join-Path $paths.Logs 'install.log'
